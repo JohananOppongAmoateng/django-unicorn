@@ -323,6 +323,10 @@ export class Element {
         for (let i = 0; i < this.el.selectedOptions.length; i++) {
           value.push(this.el.selectedOptions[i].value);
         }
+      } else if (this.el.type.toLowerCase() === "file") {
+        // Handle file inputs
+        // Return the FileList object which will be handled by messageSender
+        value = this.el.files;
       }
     }
 
@@ -345,6 +349,12 @@ export class Element {
     } else if (this.el.type.toLowerCase() === "checkbox") {
       // Handle checkboxes
       this.el.checked = val;
+    } else if (this.el.type.toLowerCase() === "file") {
+      // Skip file inputs - they cannot have their value set programmatically for security reasons.
+      // Browsers enforce this restriction to prevent malicious sites from accessing user files.
+      // If your component needs to clear a file input, set the model value to null/empty and
+      // the input will be cleared when the component re-renders.
+      return;
     } else if (this.el.type.toLowerCase() === "select-one" && val == null) {
       // Do not set null value for select elements because it clears the display
     } else {

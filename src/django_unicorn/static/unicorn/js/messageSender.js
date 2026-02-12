@@ -1,6 +1,55 @@
 import { $, getCsrfToken, hasValue, isFunction } from "./utils.js";
 
 /**
+ * Checks if the component data contains any file objects.
+ */
+function hasFiles(data) {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  for (const key in data) {
+    const value = data[key];
+    if (value instanceof FileList || value instanceof File) {
+      return true;
+    }
+    if (typeof value === "object" && hasFiles(value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Recursively appends data to FormData, handling nested objects and files.
+ */
+function appendToFormData(formData, data, prefix = "") {
+  if (data instanceof FileList) {
+    // Handle FileList objects
+    for (let i = 0; i < data.length; i++) {
+      formData.append(prefix, data[i]);
+    }
+  } else if (data instanceof File) {
+    // Handle single File objects
+    formData.append(prefix, data);
+  } else if (Array.isArray(data)) {
+    // Handle arrays
+    data.forEach((item, index) => {
+      appendToFormData(formData, item, `${prefix}[${index}]`);
+    });
+  } else if (data && typeof data === "object") {
+    // Handle objects
+    Object.keys(data).forEach((key) => {
+      const fieldName = prefix ? `${prefix}.${key}` : key;
+      appendToFormData(formData, data[key], fieldName);
+    });
+  } else {
+    // Handle primitive values
+    formData.append(prefix, data);
+  }
+}
+
+/**
  * Calls the message endpoint and merges the results into the document.
  */
 export function send(component, callback) {
@@ -39,10 +88,36 @@ export function send(component, callback) {
   };
   headers[component.csrfTokenHeaderName] = getCsrfToken(component);
 
+  // Check if the data contains files
+  let requestBody;
+  if (hasFiles(component.data)) {
+    // Use FormData for requests with files
+    const formData = new FormData();
+    
+    // Append all body fields as individual form fields
+    formData.append("id", body.id);
+    formData.append("checksum", body.checksum);
+    formData.append("actionQueue", JSON.stringify(body.actionQueue));
+    formData.append("epoch", body.epoch);
+    formData.append("hash", body.hash);
+    
+    // Append data fields, handling files specially
+    Object.keys(body.data).forEach((key) => {
+      appendToFormData(formData, body.data[key], `data.${key}`);
+    });
+    
+    requestBody = formData;
+    // Don't set Content-Type header - browser will set it with boundary
+  } else {
+    // Use JSON for requests without files
+    headers["Content-Type"] = "application/json";
+    requestBody = JSON.stringify(body);
+  }
+
   return fetch(component.syncUrl, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: requestBody,
   })
     .then((response) => {
       if (response.ok) {

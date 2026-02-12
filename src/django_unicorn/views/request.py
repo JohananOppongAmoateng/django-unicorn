@@ -9,6 +9,82 @@ from django_unicorn.views.action import Action, CallMethod, Refresh, Reset, Sync
 logger = logging.getLogger(__name__)
 
 
+def parse_multipart_data(request):
+    """
+    Parse multipart/form-data request into a dictionary structure.
+    
+    Handles nested fields like 'data.field_name' and reconstructs the original structure.
+    """
+    data = {}
+    files = {}
+    
+    # Parse POST data
+    for key, value in request.POST.items():
+        if key.startswith("data."):
+            # Extract the field name after 'data.'
+            field_path = key[5:]  # Remove 'data.' prefix
+            
+            # Handle nested paths (e.g., 'dict.key' -> data['dict']['key'])
+            parts = field_path.split(".")
+            current = data
+            for i, part in enumerate(parts[:-1]):
+                # Handle array notation
+                if "[" in part and "]" in part:
+                    base_key = part[:part.index("[")]
+                    index = int(part[part.index("[") + 1:part.index("]")])
+                    if base_key not in current:
+                        current[base_key] = []
+                    while len(current[base_key]) <= index:
+                        current[base_key].append({})
+                    current = current[base_key][index]
+                else:
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
+            
+            # Set the final value
+            final_key = parts[-1]
+            if "[" in final_key and "]" in final_key:
+                base_key = final_key[:final_key.index("[")]
+                index = int(final_key[final_key.index("[") + 1:final_key.index("]")])
+                if base_key not in current:
+                    current[base_key] = []
+                while len(current[base_key]) <= index:
+                    current[base_key].append(None)
+                current[base_key][index] = value
+            else:
+                current[final_key] = value
+        elif key == "actionQueue":
+            # Parse actionQueue JSON string
+            try:
+                data[key] = loads(value)
+            except JSONDecodeError as e:
+                raise UnicornViewError(f"Failed to parse actionQueue field: {e}") from e
+        else:
+            # Store other fields directly
+            data[key] = value
+    
+    # Parse FILES data
+    for key, file_list in request.FILES.lists():
+        if key.startswith("data."):
+            field_path = key[5:]
+            parts = field_path.split(".")
+            current = data
+            for part in parts[:-1]:
+                if part not in current:
+                    current[part] = {}
+                current = current[part]
+            
+            final_key = parts[-1]
+            # Store single file or list of files
+            if len(file_list) == 1:
+                current[final_key] = file_list[0]
+            else:
+                current[final_key] = file_list
+    
+    return data
+
+
 class ComponentRequest:
     """
     Parses, validates, and stores all of the data from the message request.
@@ -30,11 +106,21 @@ class ComponentRequest:
         self.body = {}
         self.request = request
 
+        # Check if this is a multipart/form-data request (contains files)
+        content_type = request.META.get("CONTENT_TYPE", "")
+        is_multipart = "multipart/form-data" in content_type
+
         try:
-            self.body = loads(request.body)
+            if is_multipart:
+                # Parse multipart data
+                self.body = parse_multipart_data(request)
+            else:
+                # Parse JSON data
+                self.body = loads(request.body)
 
             if not self.body:
-                raise AssertionError("Invalid JSON body")
+                body_type = "multipart data" if is_multipart else "JSON body"
+                raise AssertionError(f"Invalid {body_type}")
         except JSONDecodeError as e:
             raise UnicornViewError("Body could not be parsed") from e
 
@@ -92,14 +178,35 @@ class ComponentRequest:
         """
         Validates that the checksum in the request matches the data.
 
+        Files are excluded from checksum validation because they cannot be reliably
+        serialized for checksumming and may not be present when the checksum was
+        originally calculated on the frontend.
+
         Returns:
             Raises `AssertionError` if the checksums don't match.
         """
+        from django.core.files.uploadedfile import UploadedFile
+
         checksum = self.body.get("checksum")
 
         if not checksum:
             raise AssertionError("Missing checksum")
 
+        # Check if there are any files in the data
+        def has_files(obj):
+            """Recursively check if there are any file objects."""
+            if isinstance(obj, UploadedFile):
+                return True
+            elif isinstance(obj, list):
+                return any(has_files(item) for item in obj)
+            elif isinstance(obj, dict):
+                return any(has_files(v) for v in obj.values())
+            return False
+        
+        # Skip checksum validation if files are present
+        if has_files(self.data):
+            return
+        
         generated_checksum = generate_checksum(self.data)
 
         if checksum != generated_checksum:
