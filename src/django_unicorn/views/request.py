@@ -174,14 +174,35 @@ class ComponentRequest:
         """
         Validates that the checksum in the request matches the data.
 
+        Files are excluded from checksum validation because they cannot be reliably
+        serialized for checksumming and may not be present when the checksum was
+        originally calculated on the frontend.
+
         Returns:
             Raises `AssertionError` if the checksums don't match.
         """
+        from django.core.files.uploadedfile import UploadedFile
+
         checksum = self.body.get("checksum")
 
         if not checksum:
             raise AssertionError("Missing checksum")
 
+        # Check if there are any files in the data
+        def has_files(obj):
+            """Recursively check if there are any file objects."""
+            if isinstance(obj, UploadedFile):
+                return True
+            elif isinstance(obj, list):
+                return any(has_files(item) for item in obj)
+            elif isinstance(obj, dict):
+                return any(has_files(v) for v in obj.values())
+            return False
+        
+        # Skip checksum validation if files are present
+        if has_files(self.data):
+            return
+        
         generated_checksum = generate_checksum(self.data)
 
         if checksum != generated_checksum:

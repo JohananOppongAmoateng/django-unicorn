@@ -349,6 +349,9 @@ export class Element {
     } else if (this.el.type.toLowerCase() === "checkbox") {
       // Handle checkboxes
       this.el.checked = val;
+    } else if (this.el.type.toLowerCase() === "file") {
+      // Skip file inputs - they cannot have their value set programmatically for security reasons
+      return;
     } else if (this.el.type.toLowerCase() === "select-one" && val == null) {
       // Do not set null value for select elements because it clears the display
     } else {
