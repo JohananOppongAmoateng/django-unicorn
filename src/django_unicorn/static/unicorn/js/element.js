@@ -323,6 +323,10 @@ export class Element {
         for (let i = 0; i < this.el.selectedOptions.length; i++) {
           value.push(this.el.selectedOptions[i].value);
         }
+      } else if (this.el.type.toLowerCase() === "file") {
+        // Handle file inputs
+        // Return the FileList object which will be handled by messageSender
+        value = this.el.files;
       }
     }
 

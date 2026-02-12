@@ -1,0 +1,30 @@
+<div>
+  <h2>File Upload Example</h2>
+  
+  <div>
+    <label for="file-input">Choose a file:</label>
+    <input type="file" id="file-input" unicorn:model="uploaded_file">
+  </div>
+
+  <div style="margin-top: 20px;">
+    <button unicorn:click="process_file">Process File</button>
+    <button unicorn:click="clear_file">Clear</button>
+  </div>
+
+  {% if upload_message %}
+  <div style="margin-top: 20px; padding: 10px; background-color: #e3f2fd; border-radius: 4px;">
+    <strong>{{ upload_message }}</strong>
+  </div>
+  {% endif %}
+
+  {% if file_name %}
+  <div style="margin-top: 20px;">
+    <h3>File Information:</h3>
+    <ul>
+      <li><strong>Name:</strong> {{ file_name }}</li>
+      <li><strong>Size:</strong> {{ file_size }} bytes</li>
+      <li><strong>Type:</strong> {{ file_type }}</li>
+    </ul>
+  </div>
+  {% endif %}
+</div>

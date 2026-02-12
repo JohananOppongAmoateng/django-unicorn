@@ -210,11 +210,12 @@ def _json_serializer(obj):
     Handle the objects that the `orjson` deserializer can't handle automatically.
 
     The types handled by `orjson` by default: dataclass, datetime, enum, float, int, numpy, str, uuid.
-    The types handled in this class: Django Model, Django QuerySet, Decimal, or any object with `to_json` method.
+    The types handled in this class: Django Model, Django QuerySet, Decimal, UploadedFile, or any object with `to_json` method.
 
     TODO: Investigate other ways to serialize objects automatically.
     e.g. Using DRF serializer: https://www.django-rest-framework.org/api-guide/serializers/#serializing-objects
     """
+    from django.core.files.uploadedfile import UploadedFile
     from django_unicorn.components import UnicornView  # noqa: PLC0415
 
     try:
@@ -223,6 +224,14 @@ def _json_serializer(obj):
                 "name": obj.component_name,
                 "id": obj.component_id,
                 "key": obj.component_key,
+            }
+        elif isinstance(obj, UploadedFile):
+            # Serialize file metadata, but not the content
+            return {
+                "name": obj.name,
+                "size": obj.size,
+                "content_type": obj.content_type,
+                "charset": obj.charset,
             }
         elif isinstance(obj, Model):
             return _get_model_dict(obj)
