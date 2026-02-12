@@ -226,7 +226,10 @@ def _json_serializer(obj):
                 "key": obj.component_key,
             }
         elif isinstance(obj, UploadedFile):
-            # Serialize file metadata, but not the content
+            # Serialize file metadata, but not the content itself.
+            # File content is excluded for performance and memory reasons - it should
+            # be read directly from the file handle when needed by the component.
+            # This also prevents large files from being unnecessarily serialized in responses.
             return {
                 "name": obj.name,
                 "size": obj.size,

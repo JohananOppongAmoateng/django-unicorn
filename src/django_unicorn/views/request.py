@@ -56,7 +56,10 @@ def parse_multipart_data(request):
                 current[final_key] = value
         elif key == "actionQueue":
             # Parse actionQueue JSON string
-            data[key] = loads(value)
+            try:
+                data[key] = loads(value)
+            except JSONDecodeError as e:
+                raise UnicornViewError(f"Failed to parse actionQueue field: {e}") from e
         else:
             # Store other fields directly
             data[key] = value
@@ -116,7 +119,8 @@ class ComponentRequest:
                 self.body = loads(request.body)
 
             if not self.body:
-                raise AssertionError("Invalid body")
+                body_type = "multipart data" if is_multipart else "JSON body"
+                raise AssertionError(f"Invalid {body_type}")
         except JSONDecodeError as e:
             raise UnicornViewError("Body could not be parsed") from e
 
