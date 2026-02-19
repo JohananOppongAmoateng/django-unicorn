@@ -13,6 +13,8 @@ DEFAULT_MORPHER_NAME = "morphdom"
 MORPHER_NAMES = (
     "morphdom",
     "alpine",
+    "idiomorph",
+    "nanomorph",
 )
 
 
