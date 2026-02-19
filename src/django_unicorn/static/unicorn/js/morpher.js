@@ -1,10 +1,14 @@
 import { MorphdomMorpher } from "./morphers/morphdom.js";
 import { AlpineMorpher } from "./morphers/alpine.js";
+import { IdiomorphMorpher } from "./morphers/idiomorph.js";
+import { NanomorphMorpher } from "./morphers/nanomorph.js";
 import { isEmpty } from "./utils.js";
 
 const MORPHER_CLASSES = {
   morphdom: MorphdomMorpher,
   alpine: AlpineMorpher,
+  idiomorph: IdiomorphMorpher,
+  nanomorph: NanomorphMorpher,
 };
 
 export function getMorpher(morpherSettings) {
