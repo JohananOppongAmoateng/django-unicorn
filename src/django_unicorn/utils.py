@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence, Set
 from inspect import signature
 from pprint import pprint
 
+import shortuuid
 from django.conf import settings
 from django.template import engines
 from django.template.backends.django import Template
@@ -50,11 +51,14 @@ def generate_checksum(data: bytes | str | dict | None) -> str:
     else:
         raise TypeError(f"Invalid type: {type(data)}")
 
-    return hmac.new(
+    checksum = hmac.new(
         str.encode(settings.SECRET_KEY),
         data_bytes,
         digestmod="sha256",
     ).hexdigest()
+    checksum = shortuuid.uuid(checksum)[:8]
+
+    return checksum
 
 
 def dicts_equal(dictionary_one: dict, dictionary_two: dict) -> bool:
