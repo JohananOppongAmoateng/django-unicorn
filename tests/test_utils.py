@@ -13,7 +13,7 @@ from django_unicorn.utils import (
 def test_generate_checksum_bytes(settings):
     settings.SECRET_KEY = "asdf"
 
-    expected = "TfxFqcQL"
+    expected = "359baf2cc444512162131dd81f17b74e9395c956582b0cd68102a8b1d3a29bc4"
     actual = generate_checksum(b'{"name": "test"}')
 
     assert expected == actual
@@ -22,7 +22,7 @@ def test_generate_checksum_bytes(settings):
 def test_generate_checksum_str(settings):
     settings.SECRET_KEY = "asdf"
 
-    expected = "TfxFqcQL"
+    expected = "359baf2cc444512162131dd81f17b74e9395c956582b0cd68102a8b1d3a29bc4"
     actual = generate_checksum('{"name": "test"}')
 
     assert expected == actual
@@ -32,7 +32,7 @@ def test_generate_checksum_dict(settings):
     settings.SECRET_KEY = "asdf"
 
     # This is different than the above because `str(dict)` turns `{"name": "test"}` into `"{'name': 'test'}"`
-    expected = "JaV4PeA6"
+    expected = "54c14a482e05a78b79955657003bf46128ee2245f9e269873573bc1aac93f1b7"
     actual = generate_checksum({"name": "test"})
 
     assert expected == actual

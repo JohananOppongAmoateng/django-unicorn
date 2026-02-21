@@ -1,3 +1,4 @@
+import hmac
 import logging
 
 from django_unicorn.call_method_parser import parse_call_method_name
@@ -102,5 +103,5 @@ class ComponentRequest:
 
         generated_checksum = generate_checksum(self.data)
 
-        if checksum != generated_checksum:
+        if not hmac.compare_digest(checksum, generated_checksum):
             raise AssertionError("Checksum does not match")
